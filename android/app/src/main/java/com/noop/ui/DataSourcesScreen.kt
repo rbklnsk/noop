@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import android.text.format.DateUtils
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,6 +25,8 @@ import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -81,6 +84,9 @@ fun DataSourcesScreen(vm: AppViewModel) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val live by vm.live.collectAsStateWithLifecycle()
+    val hcAutoSync by vm.hcAutoSync.collectAsStateWithLifecycle()
+    val hcSyncHours by vm.hcSyncHours.collectAsStateWithLifecycle()
+    val hcLastSync by vm.hcLastSync.collectAsStateWithLifecycle()
 
     // Cached-store counts, loaded once from the repo (newest data is fine to recount).
     var whoopDays by remember { mutableStateOf<Int?>(null) }
@@ -286,6 +292,65 @@ fun DataSourcesScreen(vm: AppViewModel) {
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth(),
                 ) { startHealthConnect() }
+
+                // Auto-sync: pull new Health Connect data when you open NOOP, if it's been longer than
+                // the chosen interval — no manual taps. On-open only (no background worker): it avoids a
+                // sensitive background-health permission and is reliable, and opening the app is enough.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Auto-sync periodically", style = NoopType.subhead, color = Palette.textPrimary)
+                        Text(
+                            "Re-pull new Health Connect data (e.g. Samsung Health → Health Connect) each " +
+                                "time you open NOOP, if it's been longer than the interval below. " +
+                                "Read-only; never overwrites strap data.",
+                            style = NoopType.footnote,
+                            color = Palette.textTertiary,
+                        )
+                    }
+                    Switch(
+                        checked = hcAutoSync,
+                        onCheckedChange = { on ->
+                            vm.setHcAutoSync(on)
+                            // Ensure permissions (and an immediate first sync) when turning it on.
+                            if (on) startHealthConnect()
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Palette.surfaceBase,
+                            checkedTrackColor = Palette.accent,
+                            uncheckedThumbColor = Palette.textSecondary,
+                            uncheckedTrackColor = Palette.surfaceInset,
+                            uncheckedBorderColor = Palette.hairline,
+                        ),
+                        modifier = Modifier.semantics {
+                            contentDescription = "Auto-sync Health Connect periodically"
+                        },
+                    )
+                }
+                if (hcAutoSync) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text("Every", style = NoopType.footnote, color = Palette.textSecondary)
+                        SegmentedPillControl(
+                            items = listOf(6, 12, 24),
+                            selection = hcSyncHours,
+                            label = { "${it}h" },
+                            onSelect = { vm.setHcSyncHours(it) },
+                        )
+                    }
+                    Text(
+                        "Last sync: " + if (hcLastSync == 0L) "not yet"
+                        else DateUtils.getRelativeTimeSpanString(hcLastSync).toString(),
+                        style = NoopType.footnote,
+                        color = Palette.textTertiary,
+                    )
+                }
             } else {
                 RoadmapNote("Health Connect isn't set up on this device — install it from Google Play, then return here to import.")
             }

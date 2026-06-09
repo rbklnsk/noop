@@ -17,6 +17,17 @@ approximate; downloads are on the [Releases](https://github.com/NoopApp/noop/rel
 
 ---
 
+## 1.47 — Auto-sync Health Connect (Android)
+
+- **Opt-in Health Connect auto-sync (Android).** Turn it on under Data Sources → Health Connect and NOOP
+  re-pulls new Health Connect data (e.g. a Samsung Galaxy Watch → Samsung Health → Health Connect) each
+  time you open the app, if the last sync is older than your chosen **6 / 12 / 24h** interval. Read-only,
+  idempotent, **never overwrites richer strap data**, **default OFF**. Adopted from a community PR.
+- Deliberately **on-open only** (no background worker): the contributed version also added a WorkManager
+  background job, but that's best-effort on Android 14+ and needs a sensitive background-health
+  permission — so we took the reliable foreground catch-up and skipped the worker + the permission.
+- macOS: **version bump only** (HealthKit doesn't exist on macOS; the Mac path stays the export import).
+
 ## 1.46 — Revived-strap history dates, gestures during sync, clearer pairing state
 
 - **Stale-strap clock correction (#72).** A strap that sat unused has a drifted RTC, so its offloaded
